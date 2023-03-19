@@ -1,12 +1,13 @@
-from OPCUAServerManager import OPCUAServerManager
-from OPCUAServerManager import PredefinedAttributes as pa
 import asyncio
+
 from asyncua import ua
-from aquarium import temperature, water_level, pollution
+from OPCUAServerManager import PredefinedAttributes as pa
+from OPCUAServerManager import OPCUAServerManager
+from aquarium import *
 
 server_manager = OPCUAServerManager()
 DOUBLE = ua.VariantType.Double
-BOOLEAN = ua.VariantType.Double
+BOOLEAN = ua.VariantType.Boolean
 INT64 = ua.VariantType.Int64
 
 
@@ -14,16 +15,20 @@ async def main():
     global server_manager
     if server_manager is None:
         server_manager = OPCUAServerManager()
-    await server_manager.create_server("opc.tcp://0.0.0.0:1234/", "SRV NAME")
-    node = await server_manager.add_node("ROOM #1")
+    await server_manager.create_server("opc.tcp://0.0.0.0:1234/", "AQUARIUM")
+    aqua = await server_manager.add_node("AQUARIUM #1")
     # Control flags
+    inner_temperature = await server_manager.add_variable_to_object(aqua, "Inner temperature", 40, INT64,
+                                                                    pa.read_attributes + pa.history_attributes)
+    CurrentTemp = await server_manager.add_variable_to_object(aqua, "Current temperature", 40, INT64,
+                                                                    pa.read_attributes + pa.history_attributes)
 
     await server_manager.server.start()
-    await server_manager.activate_historizing_for_variables(
-        [temperature, water_level, pollution])
-    asyncio.get_event_loop().create_task(temperature())
-    asyncio.get_event_loop().create_task(water_level())
-    asyncio.get_event_loop().create_task(pollution())
+
+    asyncio.get_event_loop().create_task(temperature(CurrentTemp))
+    #asyncio.get_event_loop().create_task(water_level(CurrentLevel))
+    #asyncio.get_event_loop().create_task(pollution(CurrentPollution))
+
     while True:
         await asyncio.sleep(1)
 
